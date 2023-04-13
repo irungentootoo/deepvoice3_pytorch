@@ -40,7 +40,7 @@ from nnmnkwii.datasets import vctk
 
 def on_progress(p):
     for k, v in p.items():
-        logging.debug("%s: %s" % (k, v))
+        logging.debug(f"{k}: {v}")
 
 
 def write_hts_label(labels, lab_path):
@@ -48,7 +48,7 @@ def write_hts_label(labels, lab_path):
     for s, e, l in labels:
         s, e = float(s) * 1e7, float(e) * 1e7
         s, e = int(s), int(e)
-        lab += "{} {} {}\n".format(s, e, l)
+        lab += f"{s} {e} {l}\n"
     print(lab)
     with open(lab_path, "w") as f:
         f.write(lab)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     log_level = args.log.upper()
     logging.getLogger().setLevel(log_level)
-    disfluencies = set(['uh', 'um'])
+    disfluencies = {'uh', 'um'}
 
     data_root = args.data_root
 

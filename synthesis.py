@@ -74,12 +74,13 @@ def tts(model, text, p=0, speaker_id=None, fast=False):
 
 
 def _load(checkpoint_path):
-    if use_cuda:
-        checkpoint = torch.load(checkpoint_path)
-    else:
-        checkpoint = torch.load(checkpoint_path,
-                                map_location=lambda storage, loc: storage)
-    return checkpoint
+    return (
+        torch.load(checkpoint_path)
+        if use_cuda
+        else torch.load(
+            checkpoint_path, map_location=lambda storage, loc: storage
+        )
+    )
 
 
 if __name__ == "__main__":
@@ -137,13 +138,16 @@ if __name__ == "__main__":
             words = nltk.word_tokenize(text)
             waveform, alignment, _, _ = tts(
                 model, text, p=replace_pronunciation_prob, speaker_id=speaker_id, fast=True)
-            dst_wav_path = join(dst_dir, "{}_{}{}.wav".format(
-                idx, checkpoint_name, file_name_suffix))
+            dst_wav_path = join(dst_dir, f"{idx}_{checkpoint_name}{file_name_suffix}.wav")
             dst_alignment_path = join(
-                dst_dir, "{}_{}{}_alignment.png".format(idx, checkpoint_name,
-                                                        file_name_suffix))
-            plot_alignment(alignment.T, dst_alignment_path,
-                           info="{}, {}".format(hparams.builder, basename(checkpoint_path)))
+                dst_dir,
+                f"{idx}_{checkpoint_name}{file_name_suffix}_alignment.png",
+            )
+            plot_alignment(
+                alignment.T,
+                dst_alignment_path,
+                info=f"{hparams.builder}, {basename(checkpoint_path)}",
+            )
             audio.save_wav(waveform, dst_wav_path)
             name = splitext(basename(text_list_file_path))[0]
             if output_html:
@@ -162,7 +166,7 @@ Your browser does not support the audio element.
                              hparams.builder, name, basename(dst_wav_path),
                              hparams.builder, name, basename(dst_alignment_path)))
             else:
-                print(idx, ": {}\n ({} chars, {} words)".format(text, len(text), len(words)))
+                print(idx, f": {text}\n ({len(text)} chars, {len(words)} words)")
 
-    print("Finished! Check out {} for generated audio samples.".format(dst_dir))
+    print(f"Finished! Check out {dst_dir} for generated audio samples.")
     sys.exit(0)

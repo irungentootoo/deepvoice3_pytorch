@@ -31,18 +31,18 @@ def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     futures = []
 
     spk_id = {}
-    with open(in_dir + '/speaker.mid', encoding='utf-8') as f:
+    with open(f'{in_dir}/speaker.mid', encoding='utf-8') as f:
         for i, line in enumerate(f):
             spk_id[line.rstrip()] = i
 
     index = 1
-    with open(in_dir + '/metadata.txt', encoding='utf-8') as f:
+    with open(f'{in_dir}/metadata.txt', encoding='utf-8') as f:
         for line in f:
             parts = line.strip().split('|')
             wav_path = parts[0]
             text = parts[1]
             uid = re.search(r'([a-z][a-z][0-9][0-9]_t)', wav_path)
-            uid = uid.group(1).replace('_t', '')
+            uid = uid[1].replace('_t', '')
             futures.append(executor.submit(
                 partial(_process_utterance, out_dir, index + 1, spk_id[uid], wav_path, text)))
             index += 1

@@ -46,7 +46,7 @@ def mix_pronunciation(text, p):
 def add_punctuation(text):
     last = text[-1]
     if last not in [".", ",", "、", "。", "！", "？", "!", "?"]:
-        text = text + "。"
+        text = f"{text}。"
     return text
 
 

@@ -27,24 +27,24 @@ padding_idx = 0
 def _get_model(n_speakers=1, speaker_embed_dim=None,
                force_monotonic_attention=False,
                use_decoder_state_for_postnet_input=False, use_memory_mask=False):
-    model = deepvoice3(n_vocab=n_vocab,
-                       embed_dim=32,
-                       mel_dim=num_mels,
-                       linear_dim=num_freq,
-                       r=outputs_per_step,
-                       padding_idx=padding_idx,
-                       n_speakers=n_speakers,
-                       speaker_embed_dim=speaker_embed_dim,
-                       dropout=1 - 0.95,
-                       kernel_size=5,
-                       encoder_channels=16,
-                       decoder_channels=32,
-                       converter_channels=32,
-                       force_monotonic_attention=force_monotonic_attention,
-                       use_decoder_state_for_postnet_input=use_decoder_state_for_postnet_input,
-                       use_memory_mask=use_memory_mask,
-                       )
-    return model
+    return deepvoice3(
+        n_vocab=n_vocab,
+        embed_dim=32,
+        mel_dim=num_mels,
+        linear_dim=num_freq,
+        r=outputs_per_step,
+        padding_idx=padding_idx,
+        n_speakers=n_speakers,
+        speaker_embed_dim=speaker_embed_dim,
+        dropout=1 - 0.95,
+        kernel_size=5,
+        encoder_channels=16,
+        decoder_channels=32,
+        converter_channels=32,
+        force_monotonic_attention=force_monotonic_attention,
+        use_decoder_state_for_postnet_input=use_decoder_state_for_postnet_input,
+        use_memory_mask=use_memory_mask,
+    )
 
 
 def _pad(seq, max_len):
@@ -102,12 +102,15 @@ def _deepvoice3(n_vocab, embed_dim=256, mel_dim=80,
                           convolutions=[(h, 3, dilation), (h, 3, dilation), (h, 3, dilation),
                                         (h, 3, dilation), (h, 3, dilation)])
 
-    model = MultiSpeakerTTSModel(
-        seq2seq, converter, padding_idx=padding_idx,
-        mel_dim=mel_dim, linear_dim=linear_dim,
-        n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim)
-
-    return model
+    return MultiSpeakerTTSModel(
+        seq2seq,
+        converter,
+        padding_idx=padding_idx,
+        mel_dim=mel_dim,
+        linear_dim=linear_dim,
+        n_speakers=n_speakers,
+        speaker_embed_dim=speaker_embed_dim,
+    )
 
 
 def test_single_speaker_deepvoice3():

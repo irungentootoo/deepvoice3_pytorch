@@ -36,7 +36,7 @@ def write_hts_label(labels, lab_path):
     for s, e, l in labels:
         s, e = float(s) * 1e7, float(e) * 1e7
         s, e = int(s), int(e)
-        lab += "{} {} {}\n".format(s, e, l)
+        lab += f"{s} {e} {l}\n"
     print(lab)
     with open(lab_path, "w", encoding='utf-8') as f:
         f.write(lab)
@@ -90,22 +90,24 @@ def gentle_request(wav_path,txt_path, server_addr, port, debug=False):
         return response
     with open(txt_path, 'r', encoding='utf-8-sig') as txt_file:
         print('Transcript - '+''.join(txt_file.readlines()))
-    with open(wav_path,'rb') as wav_file, open(txt_path, 'rb') as txt_file:
+    with (open(wav_path,'rb') as wav_file, open(txt_path, 'rb') as txt_file):
         params = (('async','false'),)
         files={'audio':(wav_name,wav_file),
                'transcript':(txt_name,txt_file),
                }
-        server_path = 'http://'+server_addr+':'+str(port)+'/transcriptions'
+        server_path = f'http://{server_addr}:{str(port)}/transcriptions'
         response = requests.post(server_path, params=params,files=files)
         if response.status_code != 200:
-            print(' [!] External server({}) returned bad response({})'.format(server_path, response.status_code))
+            print(
+                f' [!] External server({server_path}) returned bad response({response.status_code})'
+            )
     if debug:
         print('Response')
         print(response.json())
     return response
 
 if __name__ == '__main__':
-    arguments = docopt(__doc__)    
+    arguments = docopt(__doc__)
     server_addr = arguments['--server_addr']
     port = int(arguments['--port'])
     max_unalign  = float(arguments['--max_unalign'])
@@ -124,20 +126,20 @@ if __name__ == '__main__':
             txt_pattern_subdir = os.path.join(topdir, subdir, '*.txt')
             wav_paths.extend(sorted(glob(wav_pattern_subdir)))
             txt_paths.extend(sorted(glob(txt_pattern_subdir)))
-        
+
     t = tqdm(range(len(wav_paths)))
     for idx in t:
         try:
             t.set_description("Align via Gentle")
             wav_path = wav_paths[idx]
             txt_path = txt_paths[idx]
-            lab_path = os.path.splitext(wav_path)[0]+'.lab'
+            lab_path = f'{os.path.splitext(wav_path)[0]}.lab'
             if os.path.exists(lab_path) and arguments['--skip-already-done']:
-                print('[!] skipping because of pre-existing .lab file - {}'.format(lab_path))
+                print(f'[!] skipping because of pre-existing .lab file - {lab_path}')
                 continue
             res=gentle_request(wav_path,txt_path, server_addr, port)
             unalign_ratio, lab = json2hts(res.json())
-            print('[*] Unaligned Ratio - {}'.format(unalign_ratio))
+            print(f'[*] Unaligned Ratio - {unalign_ratio}')
             if unalign_ratio > max_unalign:
                 print('[!] skipping this due to bad alignment')
                 continue
@@ -146,7 +148,7 @@ if __name__ == '__main__':
             # if sth happens, skip it
             import traceback
             tb = traceback.format_exc()
-            print('[!] ERROR while processing {}'.format(wav_paths[idx]))
+            print(f'[!] ERROR while processing {wav_paths[idx]}')
             print('[!] StackTrace - ')
             print(tb)
 

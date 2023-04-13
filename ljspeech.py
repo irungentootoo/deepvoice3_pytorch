@@ -27,7 +27,7 @@ def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     with open(os.path.join(in_dir, 'metadata.csv'), encoding='utf-8') as f:
         for line in f:
             parts = line.strip().split('|')
-            wav_path = os.path.join(in_dir, 'wavs', '%s.wav' % parts[0])
+            wav_path = os.path.join(in_dir, 'wavs', f'{parts[0]}.wav')
             text = parts[2]
             if len(text) < hparams.min_text:
                 continue

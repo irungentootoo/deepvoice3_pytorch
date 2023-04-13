@@ -30,11 +30,11 @@ def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     executor = ProcessPoolExecutor(max_workers=num_workers)
     futures = []
 
-    with open(in_dir + '/speaker.sid', encoding='utf-8') as f:
+    with open(f'{in_dir}/speaker.sid', encoding='utf-8') as f:
         spk_id = f.readline().rstrip()
 
     index = 1
-    with open(in_dir + '/metadata.txt', encoding='utf-8') as f:
+    with open(f'{in_dir}/metadata.txt', encoding='utf-8') as f:
         for line in f:
             if spk_id in line:
                 parts = line.strip().split('|')

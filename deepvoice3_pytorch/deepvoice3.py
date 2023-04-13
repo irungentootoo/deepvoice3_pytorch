@@ -16,9 +16,9 @@ def expand_speaker_embed(inputs_btc, speaker_embed=None, tdim=1):
     # expand speaker embedding for all time steps
     # (B, N) -> (B, T, N)
     ss = speaker_embed.size()
-    speaker_embed_btc = speaker_embed.unsqueeze(1).expand(
-        ss[0], inputs_btc.size(tdim), ss[-1])
-    return speaker_embed_btc
+    return speaker_embed.unsqueeze(1).expand(
+        ss[0], inputs_btc.size(tdim), ss[-1]
+    )
 
 
 class Encoder(nn.Module):
@@ -280,9 +280,7 @@ class Decoder(nn.Module):
         if inputs is None:
             assert text_positions is not None
             self.start_fresh_sequence()
-            outputs = self.incremental_forward(encoder_out, text_positions, speaker_embed)
-            return outputs
-
+            return self.incremental_forward(encoder_out, text_positions, speaker_embed)
         # Grouping multiple frames if necessary
         if inputs.size(-1) == self.in_dim:
             inputs = inputs.view(inputs.size(0), inputs.size(1) // self.r, -1)
@@ -389,7 +387,7 @@ class Decoder(nn.Module):
         for idx, v in enumerate(self.force_monotonic_attention):
             last_attended[idx] = 0 if v else None
 
-        num_attention_layers = sum([layer is not None for layer in self.attention])
+        num_attention_layers = sum(layer is not None for layer in self.attention)
         t = 0
         if initial_input is None:
             initial_input = keys.data.new(B, 1, self.in_dim * self.r).zero_()
@@ -402,13 +400,13 @@ class Decoder(nn.Module):
                 w = w * torch.sigmoid(self.speaker_proj2(speaker_embed)).view(-1)
             frame_pos_embed = self.embed_query_positions(frame_pos, w)
 
-            if test_inputs is not None:
-                if t >= test_inputs.size(1):
-                    break
-                current_input = test_inputs[:, t, :].unsqueeze(1)
-            else:
+            if test_inputs is None:
                 if t > 0:
                     current_input = outputs[-1]
+            elif t >= test_inputs.size(1):
+                break
+            else:
+                current_input = test_inputs[:, t, :].unsqueeze(1)
             x = current_input
             x = F.dropout(x, p=self.dropout, training=self.training)
 
