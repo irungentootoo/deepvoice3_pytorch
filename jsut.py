@@ -12,16 +12,19 @@ import librosa
 
 def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     executor = ProcessPoolExecutor(max_workers=num_workers)
-    futures = []
-
     transcriptions = jsut.TranscriptionDataSource(
         in_dir, subsets=jsut.available_subsets).collect_files()
     wav_paths = jsut.WavFileDataSource(
         in_dir, subsets=jsut.available_subsets).collect_files()
 
-    for index, (text, wav_path) in enumerate(zip(transcriptions, wav_paths)):
-        futures.append(executor.submit(
-            partial(_process_utterance, out_dir, index + 1, wav_path, text)))
+    futures = [
+        executor.submit(
+            partial(_process_utterance, out_dir, index + 1, wav_path, text)
+        )
+        for index, (text, wav_path) in enumerate(
+            zip(transcriptions, wav_paths)
+        )
+    ]
     return [future.result() for future in tqdm(futures)]
 
 

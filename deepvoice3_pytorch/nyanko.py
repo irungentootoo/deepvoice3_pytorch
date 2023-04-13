@@ -181,9 +181,7 @@ class Decoder(nn.Module):
         if inputs is None:
             assert text_positions is not None
             self.start_fresh_sequence()
-            outputs = self.incremental_forward(encoder_out, text_positions)
-            return outputs
-
+            return self.incremental_forward(encoder_out, text_positions)
         # Grouping multiple frames if necessary
         if inputs.size(-1) == self.in_dim:
             inputs = inputs.view(inputs.size(0), inputs.size(1) // self.r, -1)
@@ -276,14 +274,14 @@ class Decoder(nn.Module):
             frame_pos = keys.data.new(B, 1).fill_(t + 1).long()
             frame_pos_embed = self.embed_query_positions(frame_pos)
 
-            if test_inputs is not None:
-                if t >= test_inputs.size(1):
-                    break
-                current_input = test_inputs[:, t, :].unsqueeze(1)
-            else:
+            if test_inputs is None:
                 if t > 0:
                     current_input = outputs[-1]
 
+            elif t >= test_inputs.size(1):
+                break
+            else:
+                current_input = test_inputs[:, t, :].unsqueeze(1)
             # (B, 1, C)
             x = current_input
 

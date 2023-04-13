@@ -12,8 +12,6 @@ import librosa
 
 def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     executor = ProcessPoolExecutor(max_workers=num_workers)
-    futures = []
-
     speakers = vctk.available_speakers
 
     td = vctk.TranscriptionDataSource(in_dir, speakers=speakers)
@@ -22,10 +20,21 @@ def build_from_path(in_dir, out_dir, num_workers=1, tqdm=lambda x: x):
     wav_paths = vctk.WavFileDataSource(
         in_dir, speakers=speakers).collect_files()
 
-    for index, (speaker_id, text, wav_path) in enumerate(
-            zip(speaker_ids, transcriptions, wav_paths)):
-        futures.append(executor.submit(
-            partial(_process_utterance, out_dir, index + 1, speaker_id, wav_path, text)))
+    futures = [
+        executor.submit(
+            partial(
+                _process_utterance,
+                out_dir,
+                index + 1,
+                speaker_id,
+                wav_path,
+                text,
+            )
+        )
+        for index, (speaker_id, text, wav_path) in enumerate(
+            zip(speaker_ids, transcriptions, wav_paths)
+        )
+    ]
     return [future.result() for future in tqdm(futures)]
 
 

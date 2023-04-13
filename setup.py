@@ -17,7 +17,7 @@ else:
     try:
         sha = subprocess.check_output(
             ['git', 'rev-parse', 'HEAD'], cwd=cwd).decode('ascii').strip()
-        version += '+' + sha[:7]
+        version += f'+{sha[:7]}'
     except subprocess.CalledProcessError:
         pass
     except IOError:  # FileNotFoundError for python 3
@@ -33,10 +33,10 @@ class build_py(setuptools.command.build_py.build_py):
     @staticmethod
     def create_version_file():
         global version, cwd
-        print('-- Building version ' + version)
+        print(f'-- Building version {version}')
         version_path = os.path.join(cwd, 'deepvoice3_pytorch', 'version.py')
         with open(version_path, 'w') as f:
-            f.write("__version__ = '{}'\n".format(version))
+            f.write(f"__version__ = '{version}'\n")
 
 
 class develop(setuptools.command.develop.develop):

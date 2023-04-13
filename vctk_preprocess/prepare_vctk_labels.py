@@ -32,22 +32,21 @@ if __name__ == "__main__":
     for idx in tqdm(range(len(vctk.available_speakers))):
         speaker = vctk.available_speakers[idx]
 
-        wav_root = join(data_root, "wav48/p{}".format(speaker))
-        txt_root = join(data_root, "txt/p{}".format(speaker))
+        wav_root = join(data_root, f"wav48/p{speaker}")
+        txt_root = join(data_root, f"txt/p{speaker}")
         assert exists(wav_root)
         assert exists(txt_root)
         print(wav_root, txt_root)
 
         # Do alignments
-        cmd = "python ./extract_feats.py -w {} -t {}".format(wav_root, txt_root)
+        cmd = f"python ./extract_feats.py -w {wav_root} -t {txt_root}"
         do(cmd)
 
         # Copy
-        lab_dir = join(out_dir, "p{}".format(speaker))
+        lab_dir = join(out_dir, f"p{speaker}")
         if not exists(lab_dir):
             os.makedirs(lab_dir)
-        cmd = "cp ./latest_features/merlin/misc/scripts/alignment/phone_align/full-context-labels/mono/*.lab {}".format(
-            lab_dir)
+        cmd = f"cp ./latest_features/merlin/misc/scripts/alignment/phone_align/full-context-labels/mono/*.lab {lab_dir}"
         do(cmd)
 
         # Remove

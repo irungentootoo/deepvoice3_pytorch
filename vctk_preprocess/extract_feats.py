@@ -30,20 +30,18 @@ export MERLINDIR=/Tmp/kastner/speech_synthesis/latest_features/merlin/
 
 
 def subfolder_select(subfolders):
-    r = [sf for sf in subfolders if sf == "p294"]
-    if len(r) == 0:
+    if r := [sf for sf in subfolders if sf == "p294"]:
+        return r
+    else:
         raise ValueError("Error: subfolder_select failed")
-    return r
 
 # Need to edit the conf...
 
 
 def replace_conflines(conf, match, sub, replace_line="%s: %s\n"):
-    replace = None
-    for n, l in enumerate(conf):
-        if l[:len(match)] == match:
-            replace = n
-            break
+    replace = next(
+        (n for n, l in enumerate(conf) if l[: len(match)] == match), None
+    )
     conf[replace] = replace_line % (match, sub)
     return conf
 
@@ -87,10 +85,14 @@ def copytree(src, dst, symlinks=False, ignore=None):
 
 
 def pwrap(args, shell=False):
-    p = subprocess.Popen(args, shell=shell, stdout=subprocess.PIPE,
-                         stdin=subprocess.PIPE, stderr=subprocess.PIPE,
-                         universal_newlines=True)
-    return p
+    return subprocess.Popen(
+        args,
+        shell=shell,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
 
 # Print output
 # http://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
@@ -98,12 +100,9 @@ def pwrap(args, shell=False):
 
 def execute(cmd, shell=False):
     popen = pwrap(cmd, shell=shell)
-    for stdout_line in iter(popen.stdout.readline, ""):
-        yield stdout_line
-
+    yield from iter(popen.stdout.readline, "")
     popen.stdout.close()
-    return_code = popen.wait()
-    if return_code:
+    if return_code := popen.wait():
         raise subprocess.CalledProcessError(return_code, cmd)
 
 
@@ -120,29 +119,27 @@ def pe(cmd, shell=False):
 
 # from merlin
 def load_binary_file(file_name, dimension):
-    fid_lab = open(file_name, 'rb')
-    features = np.fromfile(fid_lab, dtype=np.float32)
-    fid_lab.close()
-    assert features.size % float(
-        dimension) == 0.0, 'specified dimension %s not compatible with data' % (dimension)
+    with open(file_name, 'rb') as fid_lab:
+        features = np.fromfile(fid_lab, dtype=np.float32)
+    assert (
+        features.size % float(dimension) == 0.0
+    ), f'specified dimension {dimension} not compatible with data'
     features = features[:(dimension * (features.size / dimension))]
-    features = features.reshape((-1, dimension))
-    return features
+    return features.reshape((-1, dimension))
 
 
 def array_to_binary_file(data, output_file_name):
     data = np.array(data, 'float32')
-    fid = open(output_file_name, 'wb')
-    data.tofile(fid)
-    fid.close()
+    with open(output_file_name, 'wb') as fid:
+        data.tofile(fid)
 
 
 def load_binary_file_frame(file_name, dimension):
-    fid_lab = open(file_name, 'rb')
-    features = np.fromfile(fid_lab, dtype=np.float32)
-    fid_lab.close()
-    assert features.size % float(
-        dimension) == 0.0, 'specified dimension %s not compatible with data' % (dimension)
+    with open(file_name, 'rb') as fid_lab:
+        features = np.fromfile(fid_lab, dtype=np.float32)
+    assert (
+        features.size % float(dimension) == 0.0
+    ), f'specified dimension {dimension} not compatible with data'
     frame_number = features.size / dimension
     features = features[:(dimension * frame_number)]
     features = features.reshape((-1, dimension))
@@ -151,16 +148,15 @@ def load_binary_file_frame(file_name, dimension):
 
 # Source the tts_env_script
 env_script = "tts_env.sh"
-if os.path.isfile(env_script):
-    command = 'env -i bash -c "source %s && env"' % env_script
-    for line in execute(command, shell=True):
-        key, value = line.split("=")
-        # remove newline
-        value = value.strip()
-        os.environ[key] = value
-else:
-    raise IOError("Cannot find file %s" % env_script)
+if not os.path.isfile(env_script):
+    raise IOError(f"Cannot find file {env_script}")
 
+command = f'env -i bash -c "source {env_script} && env"'
+for line in execute(command, shell=True):
+    key, value = line.split("=")
+    # remove newline
+    value = value.strip()
+    os.environ[key] = value
 festdir = os.environ["FESTDIR"]
 festvoxdir = os.environ["FESTVOXDIR"]
 estdir = os.environ["ESTDIR"]

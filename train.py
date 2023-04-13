@@ -106,7 +106,7 @@ class TextDataSource(FileDataSource):
         with open(meta, "rb") as f:
             lines = f.readlines()
         l = lines[0].decode("utf-8").split("|")
-        assert len(l) == 4 or len(l) == 5
+        assert len(l) in {4, 5}
         self.multi_speaker = len(l) == 5
         texts = list(map(lambda l: l.decode("utf-8").split("|")[3], lines))
         if self.multi_speaker:
@@ -133,12 +133,11 @@ class TextDataSource(FileDataSource):
             _frontend = getattr(frontend, hparams.frontend)
         seq = _frontend.text_to_sequence(text, p=hparams.replace_pronunciation_prob)
 
-        if platform.system() == "Windows":
-            if hasattr(hparams, 'gc_probability'):
-                _frontend = None  # memory leaking prevention in Windows
-                if np.random.rand() < hparams.gc_probability:
-                    gc.collect()  # garbage collection enforced
-                    print("GC done")
+        if platform.system() == "Windows" and hasattr(hparams, 'gc_probability'):
+            _frontend = None  # memory leaking prevention in Windows
+            if np.random.rand() < hparams.gc_probability:
+                gc.collect()  # garbage collection enforced
+                print("GC done")
 
         if self.multi_speaker:
             return np.asarray(seq, dtype=np.int32), int(speaker_id)
@@ -158,7 +157,7 @@ class _NPYDataSource(FileDataSource):
         with open(meta, "rb") as f:
             lines = f.readlines()
         l = lines[0].decode("utf-8").split("|")
-        assert len(l) == 4 or len(l) == 5
+        assert len(l) in {4, 5}
         multi_speaker = len(l) == 5
         self.frame_lengths = list(
             map(lambda l: int(l.decode("utf-8").split("|")[2]), lines))
@@ -248,11 +247,10 @@ class PyTorchDataset(object):
         self.multi_speaker = X.file_data_source.multi_speaker
 
     def __getitem__(self, idx):
-        if self.multi_speaker:
-            text, speaker_id = self.X[idx]
-            return text, self.Mel[idx], self.Y[idx], speaker_id
-        else:
+        if not self.multi_speaker:
             return self.X[idx], self.Mel[idx], self.Y[idx]
+        text, speaker_id = self.X[idx]
+        return text, self.Mel[idx], self.Y[idx], speaker_id
 
     def __len__(self):
         return len(self.X)
@@ -365,8 +363,11 @@ def time_string():
 
 
 def save_alignment(path, attn):
-    plot_alignment(attn.T, path, info="{}, {}, step={}".format(
-        hparams.builder, time_string(), global_step))
+    plot_alignment(
+        attn.T,
+        path,
+        info=f"{hparams.builder}, {time_string()}, step={global_step}",
+    )
 
 
 def prepare_spec_image(spectrogram):
@@ -399,7 +400,9 @@ def eval_model(global_step, writer, device, model, checkpoint_dir, ismultispeake
     # hard coded
     speaker_ids = [0, 1, hparams.n_speakers-1] if ismultispeaker else [None]
     for speaker_id in speaker_ids:
-        speaker_str = "multispeaker{}".format(speaker_id) if speaker_id is not None else "single"
+        speaker_str = (
+            f"multispeaker{speaker_id}" if speaker_id is not None else "single"
+        )
 
         for idx, text in enumerate(texts):
             signal, alignment, _, mel = synthesis.tts(
@@ -410,7 +413,7 @@ def eval_model(global_step, writer, device, model, checkpoint_dir, ismultispeake
             path = join(eval_output_dir, "step{:09d}_text{}_{}_alignment.png".format(
                 global_step, idx, speaker_str))
             save_alignment(path, alignment)
-            tag = "eval_averaged_alignment_{}_{}".format(idx, speaker_str)
+            tag = f"eval_averaged_alignment_{idx}_{speaker_str}"
             try:
                 writer.add_image(tag, np.uint8(cm.viridis(np.flip(alignment, 1).T) * 255), global_step)
             except Exception as e:
@@ -418,8 +421,11 @@ def eval_model(global_step, writer, device, model, checkpoint_dir, ismultispeake
 
             # Mel
             try:
-                writer.add_image("(Eval) Predicted mel spectrogram text{}_{}".format(idx, speaker_str),
-                                 prepare_spec_image(mel), global_step)
+                writer.add_image(
+                    f"(Eval) Predicted mel spectrogram text{idx}_{speaker_str}",
+                    prepare_spec_image(mel),
+                    global_step,
+                )
             except Exception as e:
                 warn(str(e))
 
@@ -429,16 +435,19 @@ def eval_model(global_step, writer, device, model, checkpoint_dir, ismultispeake
             audio.save_wav(signal, path)
 
             try:
-                writer.add_audio("(Eval) Predicted audio signal {}_{}".format(idx, speaker_str),
-                                 signal, global_step, sample_rate=hparams.sample_rate)
+                writer.add_audio(
+                    f"(Eval) Predicted audio signal {idx}_{speaker_str}",
+                    signal,
+                    global_step,
+                    sample_rate=hparams.sample_rate,
+                )
             except Exception as e:
                 warn(str(e))
-                pass
 
 
 def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
                 input_lengths, checkpoint_dir=None):
-    print("Save intermediate states at step {}".format(global_step))
+    print(f"Save intermediate states at step {global_step}")
 
     # idx = np.random.randint(0, len(input_lengths))
     idx = min(1, len(input_lengths) - 1)
@@ -449,13 +458,12 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
     if attn is not None and attn.dim() == 4:
         for i, alignment in enumerate(attn):
             alignment = alignment[idx].cpu().data.numpy()
-            tag = "alignment_layer{}".format(i + 1)
+            tag = f"alignment_layer{i + 1}"
             try:
                 writer.add_image(tag, np.uint8(cm.viridis(
                     np.flip(alignment, 1).T) * 255), global_step)
                 # save files as well for now
-                alignment_dir = join(
-                    checkpoint_dir, "alignment_layer{}".format(i + 1))
+                alignment_dir = join(checkpoint_dir, f"alignment_layer{i + 1}")
                 os.makedirs(alignment_dir, exist_ok=True)
                 path = join(alignment_dir, "step{:09d}_layer_{}_alignment.png".format(
                     global_step, i + 1))
@@ -486,8 +494,6 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
                              mel_output, global_step)
         except Exception as e:
             warn(str(e))
-            pass
-
     # Predicted spectrogram
     if linear_outputs is not None:
         linear_output = linear_outputs[idx].cpu().data.numpy()
@@ -497,8 +503,6 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
                              spectrogram, global_step)
         except Exception as e:
             warn(str(e))
-            pass
-
         # Predicted audio signal
         signal = audio.inv_spectrogram(linear_output.T)
         signal /= np.max(np.abs(signal))
@@ -509,7 +513,6 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
                              global_step, sample_rate=hparams.sample_rate)
         except Exception as e:
             warn(str(e))
-            pass
         audio.save_wav(signal, path)
 
     # Target mel spectrogram
@@ -520,8 +523,6 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
             writer.add_image("Target mel spectrogram", mel_output, global_step)
         except Exception as e:
             warn(str(e))
-            pass
-
     # Target spectrogram
     if linear_outputs is not None:
         linear_output = y[idx].cpu().data.numpy()
@@ -531,7 +532,6 @@ def save_states(global_step, writer, mel_outputs, linear_outputs, attn, mel, y,
                              spectrogram, global_step)
         except Exception as e:
             warn(str(e))
-            pass
 
 
 def logit(x, eps=1e-8):
@@ -780,7 +780,7 @@ Please set a larger value for ``max_position`` in hyper parameters.""".format(
 
         averaged_loss = running_loss / (len(data_loader))
         writer.add_scalar("loss (per epoch)", averaged_loss, global_epoch)
-        print("Loss: {}".format(running_loss / (len(data_loader))))
+        print(f"Loss: {running_loss / len(data_loader)}")
 
         global_epoch += 1
 
@@ -810,7 +810,7 @@ def save_checkpoint(model, optimizer, step, checkpoint_dir, epoch,
 
 
 def build_model():
-    model = getattr(builder, hparams.builder)(
+    return getattr(builder, hparams.builder)(
         n_speakers=hparams.n_speakers,
         speaker_embed_dim=hparams.speaker_embed_dim,
         n_vocab=_frontend.n_vocab,
@@ -837,29 +837,29 @@ def build_model():
         key_projection=hparams.key_projection,
         value_projection=hparams.value_projection,
     )
-    return model
 
 
 def _load(checkpoint_path):
-    if use_cuda:
-        checkpoint = torch.load(checkpoint_path)
-    else:
-        checkpoint = torch.load(checkpoint_path,
-                                map_location=lambda storage, loc: storage)
-    return checkpoint
+    return (
+        torch.load(checkpoint_path)
+        if use_cuda
+        else torch.load(
+            checkpoint_path, map_location=lambda storage, loc: storage
+        )
+    )
 
 
 def load_checkpoint(path, model, optimizer, reset_optimizer):
     global global_step
     global global_epoch
 
-    print("Load checkpoint from: {}".format(path))
+    print(f"Load checkpoint from: {path}")
     checkpoint = _load(path)
     model.load_state_dict(checkpoint["state_dict"])
     if not reset_optimizer:
         optimizer_state = checkpoint["optimizer"]
         if optimizer_state is not None:
-            print("Load optimizer state from {}".format(path))
+            print(f"Load optimizer state from {path}")
             optimizer.load_state_dict(checkpoint["optimizer"])
     global_step = checkpoint["global_step"]
     global_epoch = checkpoint["global_epoch"]
@@ -876,7 +876,7 @@ def _load_embedding(path, model):
 
 
 def restore_parts(path, model):
-    print("Restore part of the model from: {}".format(path))
+    print(f"Restore part of the model from: {path}")
     state = _load(path)["state_dict"]
     model_dict = model.state_dict()
     valid_state_dict = {k: v for k, v in state.items() if k in model_dict}
@@ -886,15 +886,15 @@ def restore_parts(path, model):
         model.load_state_dict(model_dict)
     except RuntimeError as e:
         # there should be invalid size of weight(s), so load them per parameter
-        print(str(e))
+        print(e)
         model_dict = model.state_dict()
         for k, v in valid_state_dict.items():
             model_dict[k] = v
             try:
                 model.load_state_dict(model_dict)
             except RuntimeError as e:
-                print(str(e))
-                warn("{}: may contain invalid size of weight. skipping...".format(k))
+                print(e)
+                warn(f"{k}: may contain invalid size of weight. skipping...")
 
 
 if __name__ == "__main__":
@@ -993,16 +993,15 @@ if __name__ == "__main__":
 
     # Load embedding
     if load_embedding is not None:
-        print("Loading embedding from {}".format(load_embedding))
+        print(f"Loading embedding from {load_embedding}")
         _load_embedding(load_embedding, model)
 
-    # Setup summary writer for tensorboard
     if log_event_path is None:
         if platform.system() == "Windows":
             log_event_path = "log/run-test" + str(datetime.now()).replace(" ", "_").replace(":", "_")
         else:
             log_event_path = "log/run-test" + str(datetime.now()).replace(" ", "_")
-    print("Log event path: {}".format(log_event_path))
+    print(f"Log event path: {log_event_path}")
     writer = SummaryWriter(log_event_path)
 
     # Train!

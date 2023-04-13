@@ -68,10 +68,7 @@ def deepvoice3(n_vocab, embed_dim=256, mel_dim=80, linear_dim=513, r=4,
     seq2seq = AttentionSeq2Seq(encoder, decoder)
 
     # Post net
-    if use_decoder_state_for_postnet_input:
-        in_dim = h // r
-    else:
-        in_dim = mel_dim
+    in_dim = h // r if use_decoder_state_for_postnet_input else mel_dim
     h = converter_channels
     converter = Converter(
         n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim,
@@ -80,17 +77,19 @@ def deepvoice3(n_vocab, embed_dim=256, mel_dim=80, linear_dim=513, r=4,
         convolutions=[(h, k, 1), (h, k, 3), (2 * h, k, 1), (2 * h, k, 3)],
     )
 
-    # Seq2seq + post net
-    model = MultiSpeakerTTSModel(
-        seq2seq, converter, padding_idx=padding_idx,
-        mel_dim=mel_dim, linear_dim=linear_dim,
-        n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim,
+    return MultiSpeakerTTSModel(
+        seq2seq,
+        converter,
+        padding_idx=padding_idx,
+        mel_dim=mel_dim,
+        linear_dim=linear_dim,
+        n_speakers=n_speakers,
+        speaker_embed_dim=speaker_embed_dim,
         trainable_positional_encodings=trainable_positional_encodings,
         use_decoder_state_for_postnet_input=use_decoder_state_for_postnet_input,
         speaker_embedding_weight_std=speaker_embedding_weight_std,
-        freeze_embedding=freeze_embedding)
-
-    return model
+        freeze_embedding=freeze_embedding,
+    )
 
 
 def nyanko(n_vocab, embed_dim=128, mel_dim=80, linear_dim=513, r=1,
@@ -119,7 +118,7 @@ def nyanko(n_vocab, embed_dim=128, mel_dim=80, linear_dim=513, r=1,
 
     if n_speakers != 1:
         raise ValueError("Multi-speaker is not supported")
-    if not (downsample_step == 4 and r == 1):
+    if downsample_step != 4 or r != 1:
         raise ValueError("Not supported. You need to change hardcoded parameters")
 
     # Seq2seq
@@ -156,17 +155,19 @@ def nyanko(n_vocab, embed_dim=128, mel_dim=80, linear_dim=513, r=1,
         in_dim=in_dim, out_dim=linear_dim, channels=converter_channels,
         kernel_size=kernel_size, dropout=dropout)
 
-    # Seq2seq + post net
-    model = MultiSpeakerTTSModel(
-        seq2seq, converter, padding_idx=padding_idx,
-        mel_dim=mel_dim, linear_dim=linear_dim,
-        n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim,
+    return MultiSpeakerTTSModel(
+        seq2seq,
+        converter,
+        padding_idx=padding_idx,
+        mel_dim=mel_dim,
+        linear_dim=linear_dim,
+        n_speakers=n_speakers,
+        speaker_embed_dim=speaker_embed_dim,
         trainable_positional_encodings=trainable_positional_encodings,
         use_decoder_state_for_postnet_input=use_decoder_state_for_postnet_input,
         speaker_embedding_weight_std=speaker_embedding_weight_std,
-        freeze_embedding=freeze_embedding)
-
-    return model
+        freeze_embedding=freeze_embedding,
+    )
 
 
 def deepvoice3_multispeaker(n_vocab, embed_dim=256, mel_dim=80, linear_dim=513, r=4,
@@ -233,10 +234,7 @@ def deepvoice3_multispeaker(n_vocab, embed_dim=256, mel_dim=80, linear_dim=513, 
     seq2seq = AttentionSeq2Seq(encoder, decoder)
 
     # Post net
-    if use_decoder_state_for_postnet_input:
-        in_dim = h // r
-    else:
-        in_dim = mel_dim
+    in_dim = h // r if use_decoder_state_for_postnet_input else mel_dim
     h = converter_channels
     converter = Converter(
         n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim,
@@ -245,14 +243,16 @@ def deepvoice3_multispeaker(n_vocab, embed_dim=256, mel_dim=80, linear_dim=513, 
         convolutions=[(h, k, 1), (h, k, 3), (2 * h, k, 1), (2 * h, k, 3)],
     )
 
-    # Seq2seq + post net
-    model = MultiSpeakerTTSModel(
-        seq2seq, converter, padding_idx=padding_idx,
-        mel_dim=mel_dim, linear_dim=linear_dim,
-        n_speakers=n_speakers, speaker_embed_dim=speaker_embed_dim,
+    return MultiSpeakerTTSModel(
+        seq2seq,
+        converter,
+        padding_idx=padding_idx,
+        mel_dim=mel_dim,
+        linear_dim=linear_dim,
+        n_speakers=n_speakers,
+        speaker_embed_dim=speaker_embed_dim,
         trainable_positional_encodings=trainable_positional_encodings,
         use_decoder_state_for_postnet_input=use_decoder_state_for_postnet_input,
         speaker_embedding_weight_std=speaker_embedding_weight_std,
-        freeze_embedding=freeze_embedding)
-
-    return model
+        freeze_embedding=freeze_embedding,
+    )

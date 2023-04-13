@@ -107,7 +107,8 @@ class AttentionSeq2Seq(nn.Module):
         self.decoder = decoder
         if isinstance(self.decoder.attention, nn.ModuleList):
             self.encoder.num_attention_layers = sum(
-                [layer is not None for layer in decoder.attention])
+                layer is not None for layer in decoder.attention
+            )
 
     def forward(self, text_sequences, mel_targets=None, speaker_embed=None,
                 text_positions=None, frame_positions=None, input_lengths=None):

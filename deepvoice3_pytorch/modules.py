@@ -60,8 +60,7 @@ class SinusoidalEncoding(nn.Embedding):
                 pe.append(F.embedding(
                     x[batch_idx], weight, self.padding_idx, self.max_norm,
                     self.norm_type, self.scale_grad_by_freq, self.sparse))
-            pe = torch.stack(pe)
-            return pe
+            return torch.stack(pe)
 
 
 class GradMultiply(torch.autograd.Function):
